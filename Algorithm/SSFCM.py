@@ -53,21 +53,21 @@ class Dssfcm(FuzzyCMeans):
         self.create_u_bar(n_points, self.n_clusters, labels, supervised_ratio)
     
         # Gọi hàm fit từ lớp cha (FuzzyCMeans)
-        centroids, membership_matrix, steps = super().fit(data)
+        centroids, membership_matrix, steps, _ = super().fit(data)
         self.steps = steps  # Lưu số bước lặp vào thuộc tính của class
         
         return centroids, membership_matrix, steps
 
 import pandas as pd
 from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient, partition_entropy, f1_score, accuracy_score
-from Ultility.data import  round_float 
+from Ultility.data import  round_float , fetch_data_from_uci
 import numpy as np
 
 if __name__ == "__main__":
-    data_dict = pd.read_csv(r"/NCKH/data/UCI//Dry_Bean.csv")
-
-    data = data_dict.iloc[:, :-1].values  # Chuyển thành mảng numpy
-    labels = data_dict.iloc[:, -1].values
+    dataset_id = 602
+    data_dict= fetch_data_from_uci(dataset_id)
+    data, labels = data_dict['X'], data_dict['y']
+    
 
     n_clusters = len(np.unique(labels))  # Xác định số cụm từ nhãn trong dữ liệu
 

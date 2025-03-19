@@ -11,6 +11,7 @@ class FuzzyCMeans:
         self.cluster_centers = None
         self.membership_matrix = None
         self.process_time = 0 # Tính thời gian xử lý
+        self.local_data = None
     def _initialize_membership_matrix(self, n_points: int):
         np.random.seed(42)
         return np.random.dirichlet(np.ones(self.n_clusters), size=n_points)
@@ -30,6 +31,7 @@ class FuzzyCMeans:
     def fit(self, data: np.array):
         n_points, _ = data.shape
         _start_tm = time.time()
+        self.local_data = data
         self.membership_matrix = self._initialize_membership_matrix(n_points)
 
         for iteration in range(self.max_iter):
@@ -42,7 +44,7 @@ class FuzzyCMeans:
 
             self.membership_matrix = new_membership_matrix
         self.process_time = time.time() - _start_tm
-        return self.cluster_centers, self.membership_matrix, iteration + 1
+        return self.cluster_centers, self.membership_matrix, iteration + 1, self.local_data
 
 import time
 import numpy as np
@@ -61,7 +63,7 @@ if __name__ == "__main__":
 
     # Khởi tạo FuzzyCMeans và tính toán
     fcm = FuzzyCMeans(n_clusters=C)
-    centroids, membership_matrix, steps = fcm.fit(data)
+    centroids, membership_matrix, steps, _ = fcm.fit(data)
 
     print("Thời gian tính toán tuần tự", round_float(time.time() - _start_time))
 
