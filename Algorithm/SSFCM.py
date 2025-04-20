@@ -72,15 +72,16 @@ if __name__ == "__main__":
     n_clusters = len(np.unique(labels))  # Xác định số cụm từ nhãn trong dữ liệu
 
     ssfcm = Dssfcm(n_clusters=n_clusters)
-    centroids, membership_matrix, steps = ssfcm.fit(data=data, labels=labels,supervised_ratio=0.3)
-    # int_labels, label_dict = ssfcm.convert_labels_to_int(labels)
-    # predicted_labels = np.argmax(membership_matrix, axis=1)
+    centroids, membership_matrix, steps = ssfcm.fit(data=data, labels=labels,supervised_ratio=0.5)
+    int_labels, label_dict = ssfcm.convert_labels_to_int(labels)
+    predicted_labels = np.argmax(membership_matrix, axis=1)
 
     print("u_bar matrix:")
     # print(ssfcm.u_bar)
 
     print('Ma tran thanh vien:')
     # print(ssfcm.membership_matrix)
+
     print(np.sum(ssfcm.membership_matrix, axis=1))
     
     print("tam cum:")
@@ -100,8 +101,6 @@ if __name__ == "__main__":
             title,
             str(wdvl(process_time)),
             str(step),
-            # wdvl(dunn(X, np.argmax(U, axis=1))),  # DI
-            # wdvl(partition_entropy(U)),  # PE
             wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
             wdvl(partition_coefficient(U)),  # PC
             wdvl(classification_entropy(U)),  # CE
@@ -110,7 +109,8 @@ if __name__ == "__main__":
             wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
             wdvl(hypervolume(U, M)),  # FHV
             wdvl(cs(X, U, V, M)),  # CS
-            # wdvl(f1_score(int_labels, predicted_labels, average))
+            wdvl(f1_score(int_labels, np.argmax(U, axis=1), average)),
+            wdvl(accuracy_score(int_labels, np.argmax(U, axis=1)))
         ]
         result = split.join(kqdg)
         return result

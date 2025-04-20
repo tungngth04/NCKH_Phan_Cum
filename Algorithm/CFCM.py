@@ -1,8 +1,11 @@
 import time
 import numpy as np
-from FCM import FuzzyCMeans
+from Algorithm.FCM import FuzzyCMeans
 import pandas as pd
 from Ultility.ultility import divide_data_for_collaborativ
+
+from Algorithm.SSFCM import Dssfcm
+from Ultility.test import align_clusters
 class Dcfcm():
     def __init__(self, n_clusters: int, m: float = 2.0, beta: float = 0.5, epsilon: float = 1e-5, max_iter: int = 10000):
         self.n_clusters = n_clusters
@@ -11,6 +14,7 @@ class Dcfcm():
         self.max_iter = max_iter
         self.data_site = [] #Lưu trữ các datasite là các đối tượng trong FCM
         self.beta = beta #hệ só cộng tác giữa các datasite 
+        self.labels_datasite = []
 
     def phase1(self, datas: list):
         #Chạy FCM cho các datasite
@@ -70,8 +74,8 @@ class Dcfcm():
 
 
     def phase2(self, iterations: int):
-        check = [False] * self.len_datasite
         for _ in range(iterations):
+            check = [False] * self.len_datasite
             u_fall = self.caculate_U_fall()  # Tính ma trận cảm ứng giữa các site
             for i in range(self.len_datasite):
                 fcm_i = self.data_site[i]
@@ -97,10 +101,22 @@ from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouett
 from Ultility.data import  round_float , fetch_data_from_uci
 
 if __name__ == "__main__":
-    data_dict = pd.read_csv(r"/NCKH/data/UCI/Iris.csv")
-    data = data_dict.iloc[:, 1:-1].values
+
+    dataset_id = 53
+    data_dict = fetch_data_from_uci(dataset_id)
+    data, labels = data_dict['X'], data_dict['y']  # X là features, y là labels
+    data = data[:, 1:]  # Bỏ cột đầu tiên (ID)
+
+    labels_numeric, _ = Dssfcm.convert_labels_to_int(labels)
+    standard_centroid = np.array([
+        data[labels_numeric == 0].mean(axis=0),
+        data[labels_numeric == 1].mean(axis=0),
+        data[labels_numeric == 2].mean(axis=0),
+    ])
+
+
     num_sites = 3
-    sub_datasets = divide_data_for_collaborativ(data, num_sites)
+    sub_datasets, sub_datasets_labels = divide_data_for_collaborativ(data, labels, num_sites)
 
     # Khởi tạo CFM với 3 cụm (Iris có 3 lớp)
     dcfcm = Dcfcm(n_clusters=3, beta=0.5, max_iter=100)
@@ -113,6 +129,15 @@ if __name__ == "__main__":
     for i, site in enumerate(dcfcm.data_site):
         print(f"Data site {i+1}:\n", site.cluster_centers)
 
+    for i, site in enumerate(dcfcm.data_site):
+        align_centroids, align_membership = align_clusters(site.cluster_centers, site.membership_matrix, standard_centroid)
+        site.cluster_centers = align_centroids
+        site.membership_matrix = align_membership 
+
+    print("\n Trọng tâm cụm sau khi sắp xếp:")
+    for i, site in enumerate(dcfcm.data_site):
+        print(f"Data site {i+1}:\n", site.cluster_centers)
+
     # Giai đoạn 2: Cập nhật theo U_fall
     start_time = time.time()
     dcfcm.phase2(iterations=5)
@@ -121,6 +146,10 @@ if __name__ == "__main__":
     print("\n Trọng tâm cụm sau khi cộng tác:")
     for i, site in enumerate(dcfcm.data_site):
         print(f"Data site {i+1}:\n", site.cluster_centers)
+
+    print("\n Ma trận thành viên của từng data site:")
+    for i, site in enumerate(dcfcm.data_site):
+        print(f"Data site {i+1}:\n", site.membership_matrix.shape)
 
 
     # u_fall = dcfcm.caculate_U_fall()
@@ -136,13 +165,14 @@ if __name__ == "__main__":
     def wdvl(val: float) -> str:
         return str(round_float(val))
 
-    def print_info(title: str, X: np.ndarray, U: np.ndarray, V: np.ndarray, process_time: float, step: int = 0, split: str = SPLIT) -> str:
+    def print_info(title: str, X: np.ndarray, U: np.ndarray, V: np.ndarray , process_time: float, step: int = 0, split: str = SPLIT, predicted_labels: np.ndarray = None) -> str:
+        _ , labels_numeric = np.unique(predicted_labels, return_inverse=True)
+        # print("labels_numeric", labels_numeric)
+        # print("predicted_labels", np.argmax(U, axis=1))
         kqdg = [
             title,
             str(wdvl(process_time)),
             str(step),
-            # wdvl(dunn(X, np.argmax(U, axis=1))),  # DI
-            # wdvl(partition_entropy(U)),  # PE
             wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
             wdvl(partition_coefficient(U)),  # PC
             wdvl(classification_entropy(U)),  # CE
@@ -150,14 +180,16 @@ if __name__ == "__main__":
             wdvl(calinski_harabasz(X, np.argmax(U, axis=1))),  # CH
             wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
             wdvl(hypervolume(U, M)),  # FHV
-            wdvl(cs(X, U, V, M)),  # CS
-            # wdvl(f1_score(int_labels, predicted_labels, average))
+            wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
+            wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
         ]
+        print(wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)))
+        print(wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1))))
         result = split.join(kqdg)
         return result
     
-    titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S- ' , 'CH+', 'SI+', 'FHV+', 'CS-', 'F1+', 'AC+']
+    titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S-   ' , 'CH+     ', 'SI+', 'FHV+', 'F1+', 'AC+']
     print(SPLIT.join(titles))
     for i, site in enumerate(dcfcm.data_site):
-        print(print_info(title=f"Site-{i+1}", X=site.local_data, U=site.membership_matrix, V=site.cluster_centers, process_time=phase2_time, step=5))
+        print(print_info(title=f"Site-{i+1}", X=site.local_data, U=site.membership_matrix, V=site.cluster_centers, process_time=phase2_time, step=5, predicted_labels=sub_datasets_labels[i]))
 

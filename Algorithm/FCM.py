@@ -50,7 +50,7 @@ import time
 import numpy as np
 from Ultility.data import round_float, TEST_CASES, fetch_data_from_uci
 from Algorithm.FCM import FuzzyCMeans
-from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient, f1_score
+from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient, f1_score, accuracy_score
 
 if __name__ == "__main__":
     _start_time = time.time()
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # Lấy dữ liệu từ UCI
     dataset_id = 602
     data_dict = fetch_data_from_uci(dataset_id)
-    data = data_dict['X']
+    data, labels = data_dict['X'], data_dict['y']
     C = TEST_CASES[dataset_id]['n_cluster']
 
     # Khởi tạo FuzzyCMeans và tính toán
@@ -67,22 +67,28 @@ if __name__ == "__main__":
 
     print("Thời gian tính toán tuần tự", round_float(time.time() - _start_time))
 
-    print("Centroids:\n", centroids)
+    # print("Centroids:\n", centroids)
     print("Số bước lặp:", steps)
 
     SPLIT = '\t'
     M = 2
     average='weighted'
+    _ , labels_numeric = np.unique(labels, return_inverse=True)
+    # # np.set_printoptions(threshold=np.inf)
+    # print(labels_numeric)
+
     def wdvl(val: float) -> str:
         return str(round_float(val))
+    
+    print("Unique values in labels_numeric:", np.unique(labels_numeric))
+    print("Unique values in predicted_labels:", np.unique(np.argmax(membership_matrix, axis=1)))
 
     def print_info(title: str, X: np.ndarray, U: np.ndarray, V: np.ndarray, process_time: float, step: int = 0, split: str = SPLIT) -> str:
+        # print(np.argmax(U, axis=1))
         kqdg = [
             title,
             str(wdvl(process_time)),
             str(step),
-            # wdvl(dunn(X, np.argmax(U, axis=1))),  # DI
-            # wdvl(partition_entropy(U)),  # PE
             wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
             wdvl(partition_coefficient(U)),  # PC
             wdvl(classification_entropy(U)),  # CE
@@ -91,11 +97,11 @@ if __name__ == "__main__":
             wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
             wdvl(hypervolume(U, M)),  # FHV
             wdvl(cs(X, U, V, M)),  # CS
-            # wdvl(f1_score(int_labels, predicted_labels, average))
+            wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
+            wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
         ]
         result = split.join(kqdg)
         return result
-    
     titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S-       ' , 'CH+        ', 'SI+', 'FHV+', 'CS-', 'F1+', 'AC+']
     print(SPLIT.join(titles))
     print(print_info( title='SSFCM', X=data, U=membership_matrix, V=centroids, process_time=fcm.process_time, step=steps))
