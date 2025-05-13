@@ -109,8 +109,8 @@ if __name__ == "__main__":
             wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
             wdvl(hypervolume(U, M)),  # FHV
             wdvl(cs(X, U, V, M)),  # CS
-            wdvl(f1_score(int_labels, np.argmax(U, axis=1), average)),
-            wdvl(accuracy_score(int_labels, np.argmax(U, axis=1)))
+            # wdvl(f1_score(int_labels, np.argmax(U, axis=1), average)),
+            # wdvl(accuracy_score(int_labels, np.argmax(U, axis=1)))
         ]
         result = split.join(kqdg)
         return result
@@ -119,3 +119,24 @@ if __name__ == "__main__":
     print(SPLIT.join(titles))
     print(print_info( title='SSFCM', X=data, U=membership_matrix, V=centroids, process_time=ssfcm.process_time, step=steps))
 
+    def print_info2(title: str, X: np.ndarray, U: np.ndarray, V: np.ndarray, process_time: float, step: int = 0, split: str = SPLIT) -> str:
+        # print(np.argmax(U, axis=1))
+        kqdg = [
+             title,
+            str(wdvl(process_time)),
+            str(step),
+            wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
+            wdvl(partition_coefficient(U)),  # PC
+            wdvl(classification_entropy(U)),  # CE
+            wdvl(separation(X, U, V, M)),  # S
+            wdvl(calinski_harabasz(X, np.argmax(U, axis=1))),  # CH
+            wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
+            wdvl(hypervolume(U, M)),  # FHV
+            wdvl(cs(X, U, V, M)),  # CS
+            # wdvl(f1_score(int_labels, np.argmax(U, axis=1), average)),
+            # wdvl(accuracy_score(int_labels, np.argmax(U, axis=1)))
+        ]
+        return ' & '.join(kqdg) + r'\\'
+    titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S-       ' , 'CH+        ', 'SI+', 'FHV+', 'CS-', 'F1+', 'AC+']
+    print(SPLIT.join(titles))
+    print(print_info2( title='SSFCM', X=data, U=membership_matrix, V=centroids, process_time=ssfcm.process_time, step=steps))

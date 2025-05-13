@@ -12,9 +12,13 @@ class FuzzyCMeans:
         self.membership_matrix = None
         self.process_time = 0 # Tính thời gian xử lý
         self.local_data = None
-    def _initialize_membership_matrix(self, n_points: int):
+    def _initialize_membership_matrix(self, n_points: int, seed: int = 0):
         np.random.seed(42)
         return np.random.dirichlet(np.ones(self.n_clusters), size=n_points)
+        # if seed > 0:
+        #     np.random.seed(seed=seed)
+        # U0 = np.random.rand(n_points, self.n_clusters)
+        # return U0 / U0.sum(axis=1)[:, None]
 
     def _compute_cluster_centers(self, data: np.array, membership: np.ndarray = None):
         if membership is None:
@@ -27,12 +31,18 @@ class FuzzyCMeans:
 
         inv_dists = distances ** (-2 / (self.m - 1))
         return inv_dists / np.sum(inv_dists, axis=1, keepdims=True)
+    
+    def compute_objective_j(self, data: np.ndarray, U: np.ndarray, V: np.ndarray) -> float:
+        _distance = cdist(data, V)
+        # return np.sum((self.membership ** self._m) * (_distance ** 2))
+        return np.sum((U ** self.m) * (_distance ** 2))
 
-    def fit(self, data: np.array):
+    def fit(self, data: np.array, seed: int = 42):
         n_points, _ = data.shape
         _start_tm = time.time()
         self.local_data = data
-        self.membership_matrix = self._initialize_membership_matrix(n_points)
+        self.membership_matrix = self._initialize_membership_matrix(n_points, seed=seed)
+        # self.membership_matrix = self._initialize_membership_matrix(n_points=len(data), seed=seed)
 
         for iteration in range(self.max_iter):
             self.cluster_centers = self._compute_cluster_centers(data,  self.membership_matrix)
@@ -60,9 +70,11 @@ if __name__ == "__main__":
     data_dict = fetch_data_from_uci(dataset_id)
     data, labels = data_dict['X'], data_dict['y']
     C = TEST_CASES[dataset_id]['n_cluster']
-
+    M = 2
+    EPSILON = 1e-5
+    MAXITER = 10000
     # Khởi tạo FuzzyCMeans và tính toán
-    fcm = FuzzyCMeans(n_clusters=C)
+    fcm = FuzzyCMeans(n_clusters=C, m=M, epsilon=EPSILON, max_iter=MAXITER)
     centroids, membership_matrix, steps, _ = fcm.fit(data)
 
     print("Thời gian tính toán tuần tự", round_float(time.time() - _start_time))
@@ -97,11 +109,32 @@ if __name__ == "__main__":
             wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
             wdvl(hypervolume(U, M)),  # FHV
             wdvl(cs(X, U, V, M)),  # CS
-            wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
-            wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
+            # wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
+            # wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
         ]
         result = split.join(kqdg)
         return result
     titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S-       ' , 'CH+        ', 'SI+', 'FHV+', 'CS-', 'F1+', 'AC+']
     print(SPLIT.join(titles))
-    print(print_info( title='SSFCM', X=data, U=membership_matrix, V=centroids, process_time=fcm.process_time, step=steps))
+    print(print_info( title='FCM', X=data, U=membership_matrix, V=centroids, process_time=fcm.process_time, step=steps))
+    def print_info2(title: str, X: np.ndarray, U: np.ndarray, V: np.ndarray, process_time: float, step: int = 0, split: str = SPLIT) -> str:
+        # print(np.argmax(U, axis=1))
+        kqdg = [
+            title,
+            str(wdvl(process_time)),
+            str(step),
+            wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
+            wdvl(partition_coefficient(U)),  # PC
+            wdvl(classification_entropy(U)),  # CE
+            wdvl(separation(X, U, V, M)),  # S
+            wdvl(calinski_harabasz(X, np.argmax(U, axis=1))),  # CH
+            wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
+            wdvl(hypervolume(U, M)),  # FHV
+            wdvl(cs(X, U, V, M)),  # CS
+            # wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
+            # wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
+        ]
+        return ' & '.join(kqdg) + r'\\'
+    titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S-       ' , 'CH+        ', 'SI+', 'FHV+', 'CS-', 'F1+', 'AC+']
+    print(SPLIT.join(titles))
+    print(print_info2( title='FCM', X=data, U=membership_matrix, V=centroids, process_time=fcm.process_time, step=steps))

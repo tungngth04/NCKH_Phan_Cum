@@ -56,6 +56,7 @@ def run_algorithms():
     data = data_dict['X']
     labels = data_dict['y']
     n_clusters = len(np.unique(labels))
+    print(n_clusters)
 
     results = []
 
@@ -96,4 +97,7 @@ def run_algorithms():
 
 
 if __name__ == "__main__":
-    run_algorithms()
+    
+    for i in range(3):
+        run_algorithms()
+
