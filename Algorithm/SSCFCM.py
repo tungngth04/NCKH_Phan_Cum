@@ -4,6 +4,7 @@ from CFCM import Dcfcm
 from scipy.spatial.distance import cdist
 from Algorithm.FCM import FuzzyCMeans
 from Algorithm.SSFCM import Dssfcm
+from Ultility.test import align_clusters
 
 
 class SSCFCM(Dcfcm):
@@ -134,6 +135,10 @@ class SSCFCM(Dcfcm):
             n_points, _ = self.data_site[i].local_data.shape
             u_bar, _ = ssfcm.create_u_bar(n_points, self.n_clusters, labels, supervised_ratio)
             self.u_bar.append(u_bar)
+        for i, site in enumerate(self.data_site):
+            align_centroids, align_membership = align_clusters(site.cluster_centers, site.membership_matrix, standard_centroid)
+            site.cluster_centers = align_centroids
+            site.membership_matrix = align_membership 
 
         self.phase2(iterations=10000, u_bar=self.u_bar)
         phase2_time = time.time() - start_time
@@ -142,19 +147,27 @@ class SSCFCM(Dcfcm):
 
 import pandas as pd
 from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient, partition_entropy, f1_score, accuracy_score
-from Ultility.data import  round_float , fetch_data_from_uci
+from Ultility.data import  round_float , fetch_data_from_uci1
 from Ultility.ultility import divide_data_for_collaborativ
 
 if __name__ == "__main__":
-    dataset_id = 602
-    data_dict = fetch_data_from_uci(dataset_id)
-    data, labels = data_dict['X'], data_dict['y']  # X là features, y là labels
-    # data = data[:, 1:]  # Bỏ cột đầu tiên (ID)
+    dataset_id = 109
+    data_dict = fetch_data_from_uci1(dataset_id)
+    data, labels = data_dict['X'], data_dict['y']
+    labels_numeric, _ = Dssfcm.convert_labels_to_int(labels)
+    standard_centroid = np.array([
+        data[labels_numeric == 0].mean(axis=0),
+        data[labels_numeric == 1].mean(axis=0),
+        data[labels_numeric == 2].mean(axis=0),
+    ])
 
     num_sites = 3
     sub_datasets, sub_datasets_labels = divide_data_for_collaborativ(data, labels, num_sites)
+    for i, sub_data in enumerate(sub_datasets):
+        print(f"Số lượng điểm trong site {i+1}: {len(sub_data)}")
 
-    sscfcm = SSCFCM(n_clusters=7, m=2, epsilon=1e-5, max_iter=300)
+
+    sscfcm = SSCFCM(n_clusters=3, m=2, epsilon=1e-5, max_iter=300)
     phase2_time = sscfcm.fit(data, labels, num_sites, supervised_ratio=0.3)
     SPLIT = '\t'
     M = 2
@@ -176,15 +189,47 @@ if __name__ == "__main__":
             wdvl(calinski_harabasz(X, np.argmax(U, axis=1))),  # CH
             wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
             wdvl(hypervolume(U, M)),  # FHV
-            wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
-            wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
+            wdvl(cs(X, U, V, M)),  # CS
+
+            # wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
+            # wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
         ]
-        print(wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)))
-        print(wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1))))
+        # print(wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)))
+        # print(wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1))))
         result = split.join(kqdg)
         return result
     
     titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S-   ' , 'CH+     ', 'SI+', 'FHV+', 'F1+', 'AC+']
     print(SPLIT.join(titles))
     for i, site in enumerate(sscfcm.data_site):
-        print(print_info(title=f"Site-{i+1}", X=site.local_data, U=site.membership_matrix, V=site.cluster_centers, process_time=phase2_time, step=5, predicted_labels=sub_datasets_labels[i]))
+        print(print_info(title=f"Site-{i+1}", X=site.local_data, U=site.membership_matrix, V=site.cluster_centers, process_time=phase2_time, step=10000, predicted_labels=sub_datasets_labels[i]))
+
+    def print_info2(title: str, X: np.ndarray, U: np.ndarray, V: np.ndarray , process_time: float, step: int = 0, split: str = SPLIT, predicted_labels: np.ndarray = None) -> str:
+        _ , labels_numeric = np.unique(predicted_labels, return_inverse=True)
+        # print("labels_numeric", labels_numeric)
+        # print("predicted_labels", np.argmax(U, axis=1))
+        kqdg = [
+            title,
+            str(wdvl(process_time)),
+            # str(step),
+            wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
+            wdvl(partition_coefficient(U)),  # PC
+            wdvl(classification_entropy(U)),  # CE
+            wdvl(separation(X, U, V, M)),  # S
+            wdvl(calinski_harabasz(X, np.argmax(U, axis=1))),  # CH
+            wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
+            wdvl(hypervolume(U, M)),  # FHV
+            wdvl(cs(X, U, V, M)),  # CS
+            # wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
+            # wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
+
+        ]
+        # print(wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)))
+        # print(wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1))))
+        return ' & '.join(kqdg) + r'\\'
+    
+    titles = ['Alg', 'Time', 'Step', 'DB-', 'PC+', 'CE-', 'S-   ' , 'CH+     ', 'SI+', 'FHV+', 'F1+', 'AC+']
+    print(SPLIT.join(titles))
+    for i, site in enumerate(sscfcm.data_site):
+        print(print_info2(title=f"Site-{i+1}", X=site.local_data, U=site.membership_matrix, V=site.cluster_centers, process_time=phase2_time, step=10000, predicted_labels=sub_datasets_labels[i]))
+

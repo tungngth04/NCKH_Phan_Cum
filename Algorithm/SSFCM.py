@@ -60,16 +60,19 @@ class Dssfcm(FuzzyCMeans):
 
 import pandas as pd
 from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient, partition_entropy, f1_score, accuracy_score
-from Ultility.data import  round_float , fetch_data_from_uci
+from Ultility.data import  round_float , fetch_data_from_uci1, TEST_CASES
 import numpy as np
 
 if __name__ == "__main__":
-    dataset_id = 602
-    data_dict= fetch_data_from_uci(dataset_id)
+    # dataset_id = 602
+    # data_dict= fetch_data_from_uci(dataset_id)
+    # data, labels = data_dict['X'], data_dict['y']
+    dataset_id = 109
+    data_dict = fetch_data_from_uci1(dataset_id)
     data, labels = data_dict['X'], data_dict['y']
-    
 
-    n_clusters = len(np.unique(labels))  # Xác định số cụm từ nhãn trong dữ liệu
+    n_clusters = TEST_CASES[dataset_id]['n_cluster']  # Xác định số cụm từ nhãn trong dữ liệu
+    print(n_clusters)
 
     ssfcm = Dssfcm(n_clusters=n_clusters)
     centroids, membership_matrix, steps = ssfcm.fit(data=data, labels=labels,supervised_ratio=0.5)
@@ -124,7 +127,7 @@ if __name__ == "__main__":
         kqdg = [
              title,
             str(wdvl(process_time)),
-            str(step),
+            # str(step),
             wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
             wdvl(partition_coefficient(U)),  # PC
             wdvl(classification_entropy(U)),  # CE

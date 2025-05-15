@@ -6,7 +6,7 @@ import pandas as pd
 from Algorithm.CFCM import Dcfcm
 from Algorithm.FCM import FuzzyCMeans
 from Algorithm.SSFCM import Dssfcm
-from Algorithm.K_Means.K_Means1 import K_MEANS
+from Algorithm.K_Means import K_MEANS
 from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient
 from Ultility.data import round_float, fetch_data_from_uci
 from tabulate import tabulate

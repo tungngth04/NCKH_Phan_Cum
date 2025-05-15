@@ -13,12 +13,12 @@ class FuzzyCMeans:
         self.process_time = 0 # Tính thời gian xử lý
         self.local_data = None
     def _initialize_membership_matrix(self, n_points: int, seed: int = 0):
-        np.random.seed(42)
-        return np.random.dirichlet(np.ones(self.n_clusters), size=n_points)
-        # if seed > 0:
-        #     np.random.seed(seed=seed)
-        # U0 = np.random.rand(n_points, self.n_clusters)
-        # return U0 / U0.sum(axis=1)[:, None]
+        # np.random.seed(42)
+        # return np.random.dirichlet(np.ones(self.n_clusters), size=n_points)
+        if seed > 0:
+            np.random.seed(seed=seed)
+        U0 = np.random.rand(n_points, self.n_clusters)
+        return U0 / U0.sum(axis=1)[:, None]
 
     def _compute_cluster_centers(self, data: np.array, membership: np.ndarray = None):
         if membership is None:
@@ -27,6 +27,9 @@ class FuzzyCMeans:
         return np.dot(membership_matrix_power.T, data) / membership_matrix_power.sum(axis=0)[:, None]
 
     def _update_membership_matrix(self, data: np.array, centroids: np.ndarray):
+        # print(f"data shape: {data.shape}")
+        # print(f"centroids shape: {centroids.shape}")
+
         distances =  cdist(data, centroids)
 
         inv_dists = distances ** (-2 / (self.m - 1))
@@ -58,7 +61,7 @@ class FuzzyCMeans:
 
 import time
 import numpy as np
-from Ultility.data import round_float, TEST_CASES, fetch_data_from_uci
+from Ultility.data import round_float, TEST_CASES, fetch_data_from_uci1
 from Algorithm.FCM import FuzzyCMeans
 from Ultility.validity import dunn, davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient, f1_score, accuracy_score
 
@@ -66,9 +69,10 @@ if __name__ == "__main__":
     _start_time = time.time()
 
     # Lấy dữ liệu từ UCI
-    dataset_id = 602
-    data_dict = fetch_data_from_uci(dataset_id)
+    dataset_id = 109
+    data_dict = fetch_data_from_uci1(dataset_id)
     data, labels = data_dict['X'], data_dict['y']
+
     C = TEST_CASES[dataset_id]['n_cluster']
     M = 2
     EPSILON = 1e-5
@@ -122,7 +126,7 @@ if __name__ == "__main__":
         kqdg = [
             title,
             str(wdvl(process_time)),
-            str(step),
+            # str(step),
             wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
             wdvl(partition_coefficient(U)),  # PC
             wdvl(classification_entropy(U)),  # CE

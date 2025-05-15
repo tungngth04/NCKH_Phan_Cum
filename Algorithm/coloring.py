@@ -4,37 +4,38 @@ import rasterio
 from Algorithm.FCM import FuzzyCMeans
 import os
 from Algorithm.CFCM import Dcfcm 
+from Ultility.test import align_clusters
+from Algorithm.SSFCM import Dssfcm
 
-# Kiểm tra xem file có tồn tại không
-file_path = 'E:/NCKH/data/LANDSAT/SCL/z50_B2_scl.tif'
-if os.path.exists(file_path):
-    print(f"File {file_path} tồn tại")
-else:
-    print(f"File {file_path} không tồn tại")
 # Bước 1: Đường dẫn đến các ảnh vệ tinh .tif
-image_paths1 = [
+image_paths_scl = [
+    'E:/NCKH/data/LANDSAT/SCL/z200_B2_scl.tif',
+    'E:/NCKH/data/LANDSAT/SCL/z200_B3_scl.tif',
+    'E:/NCKH/data/LANDSAT/SCL/z200_B4_scl.tif',
+    'E:/NCKH/data/LANDSAT/SCL/z200_B5_scl.tif',
+]
+
+image_paths_tn = [
+    'E:/NCKH/data/LANDSAT/TN/z200_B2_tn.tif',
+    'E:/NCKH/data/LANDSAT/TN/z200_B3_tn.tif',
+    'E:/NCKH/data/LANDSAT/TN/z200_B4_tn.tif',
+    'E:/NCKH/data/LANDSAT/TN/z200_B5_tn.tif',
+]
+
+image_paths_hn = [    
+    'E:/NCKH/data/LANDSAT/HN/z200_B2_hn.tif',
+    'E:/NCKH/data/LANDSAT/HN/z200_B3_hn.tif',
+    'E:/NCKH/data/LANDSAT/HN/z200_B4_hn.tif',
+    'E:/NCKH/data/LANDSAT/HN/z200_B5_hn.tif',
+]
+image_paths4 = [
     'E:/NCKH/data/LANDSAT/SCL/z50_B2_scl.tif',
     # 'E:/NCKH/z50_B5_scl.tif',
     'E:/NCKH/data/LANDSAT/SCL/z50_B3_scl.tif',
     'E:/NCKH/data/LANDSAT/SCL/z50_B4_scl.tif',
     'E:/NCKH/data/LANDSAT/SCL/z50_B5_scl.tif',
 ]
-
-image_paths2 = [
-    'E:/NCKH/data/LANDSAT/TN/z50_B2_tn.tif',
-    'E:/NCKH/data/LANDSAT/TN/z50_B3_tn.tif',
-    'E:/NCKH/data/LANDSAT/TN/z50_B4_tn.tif',
-    'E:/NCKH/data/LANDSAT/TN/z50_B5_tn.tif',
-]
-
-image_paths3 = [    
-    'E:/NCKH/data/LANDSAT/HN/z50_B2_hn.tif',
-    'E:/NCKH/data/LANDSAT/HN/z50_B3_hn.tif',
-    'E:/NCKH/data/LANDSAT/HN/z50_B4_hn.tif',
-    'E:/NCKH/data/LANDSAT/HN/z50_B5_hn.tif',
-]
-
-all_image_paths = [image_paths1, image_paths2, image_paths3]
+all_image_paths = [image_paths_scl, image_paths_tn, image_paths_hn]
 
 brands = []
 
@@ -54,10 +55,10 @@ def load_and_prepare(image_paths):
     return data_2d, w, h ,c 
 
 # Đọc và xử lý từng nhóm ảnh riêng biệt
-data1, w1, h1, c1 = load_and_prepare(image_paths1)
-data2, w2, h2, c2 = load_and_prepare(image_paths2)
-data3, w3, h3, c3 = load_and_prepare(image_paths3)
-
+data1, w1, h1, c1 = load_and_prepare(image_paths_scl)
+data2, w2, h2, c2 = load_and_prepare(image_paths_tn)
+data3, w3, h3, c3 = load_and_prepare(image_paths_hn)
+data4, w4, h4, c4 = load_and_prepare(image_paths4)
 all_data = [data1, data2, data3]
 
 
@@ -66,32 +67,45 @@ C = 6
 M = 2
 EPSILON = 1e-5
 MAXITER = 10000
-dcfcm = Dcfcm(n_clusters=C, m=M, epsilon=EPSILON, max_iter=MAXITER)
-dcfcm.phase1(all_data)
-dcfcm.phase2(iterations=10000)
 
-# dcfm = Dcfcm(n_clusters=6, m=2, epsilon=1e-5, max_iter=10000)  # Khởi tạo Dcfcm
-# centroids, membership_matrix, steps, _ = dcfm.fit(data)  # Sử dụng Dcfcm để phân cụm
-
-
+fcm = FuzzyCMeans(n_clusters=C, m=M, epsilon=EPSILON, max_iter=MAXITER)
+centroid4,membership4 , step , _= fcm.fit(data=data4)
+print(membership4.shape)
+print(centroid4.shape)
 # Bảng màu cho từng lớp
 COLORS = np.array([
-    [0, 0, 255],       # Class 1: Sông, hồ
-    [128, 128, 128],   # Class 2: Đất trống, đường
-    [0, 255, 0],       # Class 3: Cánh đồng, cỏ
-    [1, 192, 255],     # Class 4: Rừng thưa, cây thấp
-    [0, 128, 0],       # Class 5: Cây lâu năm
-    [0, 64, 0]         # Class 6: Rừng rậm
+    [0, 0, 255],        # Class 1: Rivers, lakes, ponds
+    [128, 128, 128],    # Class 2: Vacant land, roads
+    [0, 255, 0],        # Class 3: Field, grass
+    [1, 192, 255],      # Class 4: Sparse forest, low trees
+    [0, 128, 0],        # Class 5: Perennial Plants
+    [0, 64, 0],         # Class 6: Dense forest, jungle
 ], dtype=np.uint8)
 
 
-# Bước 7: Tạo ảnh phân đoạn
-# labels = np.argmax(membership_matrix, axis=1)  # lấy nhãn theo giá trị thành viên cao nhất
-# labels_image = labels.reshape((height, width))
-# # Bước 8: Gán màu theo từng nhãn
-# colored_segmented_image = np.zeros((height, width, 3), dtype=np.uint8)
-# for i, color in enumerate(COLORS):
-#     colored_segmented_image[labels_image == i] = color
+
+labels4 = np.argmax(membership4, axis=1) # Nhãn
+
+# labels_image = labels.reshape(( height,width))
+labels_image4 = labels4.reshape(( w4,h4))
+
+# colored_segmented_image = np.zeros(( height,width, 3), dtype=np.uint8)
+colored_segmented_image4 = np.zeros(( w4,h4, 3), dtype=np.uint8)
+
+for i, color in enumerate(COLORS):
+    colored_segmented_image4[labels_image4 == i] = color  # labels của các đoạn với màu tương ứng
+
+plt.imshow(colored_segmented_image4)
+plt.title("Z50")
+plt.axis('off')
+plt.show()
+
+dcfcm = Dcfcm(n_clusters=C, m=M, epsilon=EPSILON, max_iter=MAXITER)
+dcfcm.phase1(all_data)
+
+dcfcm.phase2(iterations=10000)
+from scipy.spatial.distance import cdist
+mapping = np.argmin(cdist(dcfcm.data_site[0].cluster_centers, centroid4), axis=1)
 def create_segmented_image(membership_matrix, width, height, colors):
     labels = np.argmax(membership_matrix, axis=1)
     labels_image = labels.reshape((width,height))  # Chú ý chiều là (H, W)
@@ -101,29 +115,3 @@ def create_segmented_image(membership_matrix, width, height, colors):
     return segmented_image
 
 
-sizes = [(w1, h1), (w2, h2), (w3, h3)]
-titles = ['SCL (Site 1)', 'TN (Site 2)', 'HN (Site 3)']
-
-
-# Bước 9: Hiển thị ảnh phân đoạn
-# plt.figure(figsize=(8, 8))
-# plt.imshow(colored_segmented_image)
-# plt.title("Ảnh phân đoạn theo Fuzzy C-Means")
-# plt.axis('off')
-# plt.show()
-
-plt.figure(figsize=(15, 5))
-
-# Duyệt qua từng site và hiển thị ảnh phân đoạn
-for i, site in enumerate(dcfcm.data_site):
-    width, height = sizes[i]
-    membership_matrix = site.membership_matrix
-    segmented_image = create_segmented_image(membership_matrix, width, height, COLORS)
-    
-    plt.subplot(1, 3, i + 1)
-    plt.imshow(segmented_image)
-    plt.title(f"Ảnh phân đoạn - {titles[i]}")
-    plt.axis('off')
-
-plt.tight_layout()
-plt.show()

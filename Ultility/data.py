@@ -54,3 +54,15 @@ def fetch_data_from_uci(dataset_id: int) -> dict:
     features = df.iloc[:, :-1].values  #
     labels = df.iloc[:, -1].values  
     return {'X': features, 'y': labels}
+
+def fetch_data_from_uci1(dataset_id: int) -> dict:
+    """Lấy dữ liệu từ file cục bộ dựa trên dataset_id"""
+    if dataset_id not in LOCAL_DATASETS:
+        raise ValueError(f"Dataset ID {dataset_id} không tồn tại trong danh sách.")
+    file_path = LOCAL_DATASETS[dataset_id]
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Không tìm thấy file dữ liệu: {file_path}")
+    df = pd.read_csv(file_path)
+    features = df.iloc[:, 1:].values  #
+    labels = df.iloc[:, 0].values  
+    return {'X': features, 'y': labels}
