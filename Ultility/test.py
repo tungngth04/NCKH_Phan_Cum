@@ -27,13 +27,22 @@ from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 from Algorithm.SSFCM import Dssfcm
 from Ultility.data import fetch_data_from_uci
+# def align_clusters(centroids, membership_matrix, standard_centroid):
+#     dist = cdist(centroids, standard_centroid)
+#     _, col_idx = linear_sum_assignment(dist)
+#     sort = np.argsort(col_idx)
+    
+#     return centroids[sort], membership_matrix[:, sort]
 def align_clusters(centroids, membership_matrix, standard_centroid):
     dist = cdist(centroids, standard_centroid)
-    _, col_idx = linear_sum_assignment(dist)
-    sort = np.argsort(col_idx)
+    row_ind, col_ind = linear_sum_assignment(dist)
+    sort_order = np.argsort(col_ind)
     
-    return centroids[sort], membership_matrix[:, sort]
-
+    # sắp xếp centroid theo row_ind rồi theo sort_order
+    aligned_centroids = centroids[row_ind][sort_order]
+    aligned_membership = membership_matrix[:, row_ind][:, sort_order]
+    
+    return aligned_centroids, aligned_membership
 if __name__ == "__main__":
     
     dataset_id = 53
