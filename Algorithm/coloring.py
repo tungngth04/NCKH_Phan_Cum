@@ -6,6 +6,7 @@ import os
 from Algorithm.CFCM import Dcfcm 
 from Ultility.test import align_clusters
 from Algorithm.SSFCM import Dssfcm
+import time
 
 # Bước 1: Đường dẫn đến các ảnh vệ tinh .tif
 image_paths_scl = [
@@ -83,8 +84,8 @@ MAXITER = 10000
 # Bảng màu cho từng lớp
 COLORS = np.array([
     [0, 255, 0],        # Class 3: Field, grass Đồng ruộng, cỏ
-    [1, 192, 255],      # Class 4: Sparse forest, low trees  Rừng thưa, cây thấp
     [0, 64, 0],         # Class 6: Dense forest, jungle RỪng rậm
+    [1, 192, 255],      # Class 4: Sparse forest, low trees  Rừng thưa, cây thấp
     [0, 128, 0],        # Class 5: Perennial Plants cây lâu năm
     [0, 0, 255],        # Class 1: Rivers, lakes, ponds sông, hồ, ao
     [128, 128, 128],    # Class 2: Vacant land, roads đắt trống đường nhà
@@ -144,8 +145,9 @@ for i, site in enumerate(dcfcm.data_site):
     # Cập nhật lại trong site
     site.cluster_centers = aligned_centroids
     site.membership_matrix = aligned_membership
+start_time = time.time()
 dcfcm.phase2(iterations=10000)
-
+phase2_time = time.time() - start_time
 
 
 def create_segmented_image(membership_matrix, width, height, colors):
@@ -203,11 +205,11 @@ from scipy.spatial.distance import cdist
 
 # plt.tight_layout()
 # plt.show()
-# output_dir = "E:/NCKH/data/LANDSAToutput_segmented_images_2024"
-# os.makedirs(output_dir, exist_ok=True)
+output_dir = "E:/NCKH/data/LANDSAToutput_segmented_images_2024"
+os.makedirs(output_dir, exist_ok=True)
 
 # # Lưu từng ảnh trong segmented_images
-# site_names = ["SCL_2024", "TN_2024", "HN_2024"]
+site_names = ["SCL_2024", "TN_2024", "HN_2024"]
 # for i, image in enumerate(segmented_images):
 #     filename = f"{output_dir}/segmented_{site_names[i]}.png"
 #     plt.imsave(filename, image)
@@ -215,49 +217,91 @@ from scipy.spatial.distance import cdist
 
 
 # # Tính diện tích
-# from collections import Counter
+from collections import Counter
 
-# def print_cluster_stats(labels, site_name, output_path):
-#     pixel_area_m2 = 100 * 100  # 10000 m²
-#     pixel_area_km2 = pixel_area_m2 / 1e6  # 0.01 km²
+def print_cluster_stats(labels, site_name, output_path):
+    pixel_area_m2 = 200 * 200  # 40000 m²
+    pixel_area_km2 = pixel_area_m2 / 1e6  # 0.04 km²
 
-#     unique, counts = np.unique(labels, return_counts=True)
-#     cluster_stats = dict(zip(unique, counts))
+    unique, counts = np.unique(labels, return_counts=True)
+    cluster_stats = dict(zip(unique, counts))
 
-#     total_pixels = np.sum(counts)
-#     total_area_km2 = total_pixels * pixel_area_km2
+    total_pixels = np.sum(counts)
+    total_area_km2 = total_pixels * pixel_area_km2
 
-#     lines = []
-#     lines.append(f"Thống kê diện tích từng cụm cho {site_name}:\n")
-#     lines.append(f"Tổng số điểm ảnh: {total_pixels} (~{total_area_km2:.2f} km²)\n")
-#     lines.append("-" * 45 + "\n")
-#     for cluster_id, pixel_count in cluster_stats.items():
-#         area_km2 = pixel_count * pixel_area_km2
-#         percentage = (pixel_count / total_pixels) * 100
-#         lines.append(f"Cụm {cluster_id + 1}: {pixel_count} pixel -> {area_km2:.2f} km² ({percentage:.2f}%)\n")
+    lines = []
+    lines.append(f"Thống kê diện tích từng cụm cho {site_name}:\n")
+    lines.append(f"Tổng số điểm ảnh: {total_pixels} (~{total_area_km2:.2f} km²)\n")
+    lines.append("-" * 45 + "\n")
+    for cluster_id, pixel_count in cluster_stats.items():
+        area_km2 = pixel_count * pixel_area_km2
+        percentage = (pixel_count / total_pixels) * 100
+        lines.append(f"Cụm {cluster_id + 1}: {pixel_count} pixel -> {area_km2:.2f} km² ({percentage:.2f}%)\n")
 
-#     print(f"Thống kê diện tích từng cụm cho {site_name}:")
-#     print(f"Tổng số điểm ảnh: {total_pixels} (~{total_area_km2:.2f} km²)")
-#     print("-" * 45)
-#     for cluster_id, pixel_count in cluster_stats.items():
-#         area_km2 = pixel_count * pixel_area_km2
-#         percentage = (pixel_count / total_pixels) * 100
-#         print(f"Cụm {cluster_id + 1}: {pixel_count} pixel -> {area_km2:.2f} km² ({percentage:.2f}%)")
-#     # Ghi vào file
-#     with open(output_path, 'w', encoding='utf-8') as f:
-#         f.writelines(lines)
-
-
-# # # Gọi cho từng khu vực
-# # for i, site in enumerate (dcfcm.data_site) :
-# #     print_cluster_stats(np.argmax(site.membership_matrix, axis=1), f"Z200 - {site_names[i]}")
-
-# # Gọi hàm cho từng site và lưu
-# for i, site in enumerate(dcfcm.data_site):
-#     labels = np.argmax(site.membership_matrix, axis=1)  # gán nhãn cụm
-#     site_name = site_names[i]
-#     stats_path = f"{output_dir}/stats_{site_name}.txt"
-#     print_cluster_stats(labels, site_name, stats_path)
-#     print(f"Đã lưu thống kê: {stats_path}")
+    print(f"Thống kê diện tích từng cụm cho {site_name}:")
+    print(f"Tổng số điểm ảnh: {total_pixels} (~{total_area_km2:.2f} km²)")
+    print("-" * 45)
+    for cluster_id, pixel_count in cluster_stats.items():
+        area_km2 = pixel_count * pixel_area_km2
+        percentage = (pixel_count / total_pixels) * 100
+        print(f"Cụm {cluster_id + 1}: {pixel_count} pixel -> {area_km2:.2f} km² ({percentage:.2f}%)")
+    # Ghi vào file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.writelines(lines)
 
 
+# # Gọi cho từng khu vực
+# for i, site in enumerate (dcfcm.data_site) :
+#     print_cluster_stats(np.argmax(site.membership_matrix, axis=1), f"Z200 - {site_names[i]}")
+
+# Gọi hàm cho từng site và lưu
+for i, site in enumerate(dcfcm.data_site):
+    labels = np.argmax(site.membership_matrix, axis=1)  # gán nhãn cụm
+    site_name = site_names[i]
+    stats_path = f"{output_dir}/stats_{site_name}.txt"
+    print_cluster_stats(labels, site_name, stats_path)
+    print(f"Đã lưu thống kê: {stats_path}")
+
+
+from Ultility.validity import  davies_bouldin, calinski_harabasz, silhouette, separation, classification_entropy, hypervolume, cs, partition_coefficient
+from Ultility.data import  round_float 
+SPLIT = '\t'
+M = 2
+average='weighted'
+def wdvl(val: float) -> str:
+    return str(round_float(val))
+def print_info2(title: str, X: np.ndarray, U: np.ndarray, V: np.ndarray , process_time: float, step: int = 0, split: str = SPLIT) -> str:
+        # print("labels_numeric", labels_numeric)
+        # print("predicted_labels", np.argmax(U, axis=1))
+        kqdg = [
+            title,
+            str(wdvl(process_time)),
+            # str(step),
+            wdvl(davies_bouldin(X, np.argmax(U, axis=1))),  # DB
+            wdvl(partition_coefficient(U)),  # PC
+            wdvl(classification_entropy(U)),  # CE
+            wdvl(separation(X, U, V, M)),  # S
+            wdvl(calinski_harabasz(X, np.argmax(U, axis=1))),  # CH
+            wdvl(silhouette(X, np.argmax(U, axis=1))),  # SI
+            wdvl(hypervolume(U, M)),  # FHV
+            wdvl(cs(X, U, V, M)),  # CS
+            # wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)),
+            # wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1)))
+
+        ]
+        # print(wdvl(f1_score(labels_numeric, np.argmax(U, axis=1), average)))
+        # print(wdvl(accuracy_score(labels_numeric, np.argmax(U, axis=1))))
+        return ' & '.join(kqdg) + r'\\'
+    
+titles = ['Alg', 'Time', 'DB-', 'PC+', 'CE-', 'S-   ' , 'CH+     ', 'SI+', 'FHV+', 'F1+', 'AC+']
+print(SPLIT.join(titles))
+lines2 = []
+
+for i, site in enumerate(dcfcm.data_site):
+    print(print_info2(title=f"Site-{site_names[i]}", X=site.local_data, U=site.membership_matrix, V=site.cluster_centers, process_time=phase2_time, step=dcfcm.steps[i]))
+    lines2.append(print_info2(title=f"Site-{site_names[i]}", X=site.local_data, U=site.membership_matrix, V=site.cluster_centers, process_time=phase2_time, step=dcfcm.steps[i]))
+output_dir2 = "E:/NCKH/data/index_images_2024"
+os.makedirs(output_dir2, exist_ok=True)
+stats_path = f"{output_dir2}/stats_{site_name}.txt"
+with open(stats_path, 'w', encoding='utf-8') as f:
+    f.writelines(lines2)
